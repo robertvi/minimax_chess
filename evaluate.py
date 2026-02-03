@@ -25,11 +25,17 @@ def evaluate(board: Board) -> int:
 
     white_score = 0
     black_score = 0
-    for sq in SQUARES:
+    for i, sq in enumerate(SQUARES):
         piece = board[sq]
         if piece is None:
             continue
         val = PIECE_VALUES[piece.piece_type]
+        if piece.piece_type == PAWN:
+            rank = i // 8  # 0-based: 0=rank1, 7=rank8
+            if piece.color == WHITE:
+                val += (rank - 1) * 10  # rank2=0, rank3=10, ... rank7=50
+            else:
+                val += (6 - rank) * 10  # rank7=0, rank6=10, ... rank2=50
         if piece.color == WHITE:
             white_score += val
         else:
