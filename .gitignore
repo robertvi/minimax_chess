@@ -3,3 +3,4 @@ __pycache__/
 *.pyo
 venv_container/
 venv_host/
+setup_host.log
