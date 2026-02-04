@@ -1,8 +1,11 @@
 import time
 
-from bulletchess import Board, Move, CHECKMATE, DRAW
+from bulletchess import Board, Move, CHECKMATE
 
 from evaluate import evaluate, PIECE_VALUES
+
+# Mate score base — adjusted by ply so shorter mates score higher
+MATE_SCORE = 99999
 
 
 def order_moves(board: Board, moves: list[Move]) -> list[Move]:
@@ -16,18 +19,31 @@ def order_moves(board: Board, moves: list[Move]) -> list[Move]:
     return sorted(moves, key=move_score, reverse=True)
 
 
-def alphabeta(board: Board, depth: int, alpha: int, beta: int) -> int:
-    """Negamax with alpha-beta pruning."""
-    if depth == 0 or board in CHECKMATE or board in DRAW:
-        return evaluate(board)
+def alphabeta(board: Board, depth: int, alpha: int, beta: int, ply: int = 0) -> int:
+    """Negamax with alpha-beta pruning.
 
-    moves = order_moves(board, board.legal_moves())
+    Key fix: Do NOT use `board in DRAW` here. The 50-move rule and threefold
+    repetition detection poison the search tree when the halfmove clock is
+    high — the engine sees all deep lines as draws and gives up on winning.
+    Instead, only detect checkmate and stalemate (no legal moves).
+    """
+    # Checkmate: side to move has lost
+    if board in CHECKMATE:
+        return -MATE_SCORE + ply  # prefer shorter mates
+
+    # Generate legal moves — if none exist and not checkmate, it's stalemate
+    moves = board.legal_moves()
     if len(moves) == 0:
+        return 0  # stalemate = draw
+
+    # Leaf node: return static evaluation
+    if depth == 0:
         return evaluate(board)
 
+    moves = order_moves(board, moves)
     for move in moves:
         board.apply(move)
-        score = -alphabeta(board, depth - 1, -beta, -alpha)
+        score = -alphabeta(board, depth - 1, -beta, -alpha, ply + 1)
         board.undo()
 
         if score >= beta:
@@ -46,7 +62,7 @@ def search(board: Board, depth: int) -> Move | None:
 
     for move in order_moves(board, board.legal_moves()):
         board.apply(move)
-        score = -alphabeta(board, depth - 1, -beta, -alpha)
+        score = -alphabeta(board, depth - 1, -beta, -alpha, ply=1)
         board.undo()
 
         if score > alpha:
